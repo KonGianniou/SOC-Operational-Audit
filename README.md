@@ -1,6 +1,7 @@
 🔴 Security Operations Center — Alarm Signal Analysis
 > \*\*Portfolio project\*\* · Synthetic dataset · R statistical analysis  
 > 1,200 alarm signals · January – June 2025 · 10 agents · 5 alarm types
+> SYNTHETIC DATA PRODUCED BY CLAUDE.AI FOR PORTFOLIO DEMONSTRATION
 ---
 
 Project Overview
