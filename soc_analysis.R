@@ -1,50 +1,32 @@
 # =============================================================================
 #  Security Operations Center (SOC) — Alarm Signal Analysis
 #  Author  : Konstantina Gianniou
-#  Dataset : SOC_Enhanced_Dataset.xlsx  (1,200 alarm signals, Jan–Jun 2025)
-#  Purpose : Agent performance audit, false alarm intelligence,
-#            incident pattern analysis, and statistical hypothesis testing
 # =============================================================================
 
-# ── 0. SETUP ──────────────────────────────────────────────────────────────────
+### Packages ###
+install.packages(c("readxl", "dplyr", "tidyr", "lubridate", "stringr", "forcats",
+                   "ggplot2", "scales", "patchwork", "ggtext", "viridis",
+                   "broom", "knitr"))
 
-required <- c(
-  "readxl", "dplyr", "tidyr", "lubridate", "stringr", "forcats",
-  "ggplot2", "scales", "patchwork", "ggtext", "viridis",
-  "broom", "knitr"
-)
-new_pkgs <- setdiff(required, rownames(installed.packages()))
-if (length(new_pkgs)) install.packages(new_pkgs, repos = "https://cloud.r-project.org")
+library(readxl);library(dplyr);library(tidyr);library(lubridate);library(stringr);library(forcats);
+library(ggplot2);library(scales);library(patchwork);library(ggtext);library(viridis);library(broom);library(knitr)
 
-suppressPackageStartupMessages({
-  library(readxl); library(dplyr); library(tidyr); library(lubridate)
-  library(stringr); library(forcats); library(ggplot2); library(scales)
-  library(patchwork); library(viridis); library(broom); library(knitr)
-})
+### Data cleaning ###
 
-dir.create("plots", showWarnings = FALSE)
+data=read_excel("SOC_Enhanced_Dataset.xlsx", sheet = "SOC_Alarms")
 
-cat("=== SOC Alarm Analysis — Initialised ===\n\n")
-
-
-# ── 1. DATA LOADING & CLEANING ────────────────────────────────────────────────
-
-raw <- read_excel("SOC_Enhanced_Dataset.xlsx", sheet = "SOC_Alarms")
-
-df <- raw %>%
+df=data %>%
   mutate(
     Date             = as.Date(Date),
     Month            = floor_date(Date, "month"),
     Month_Label      = format(Date, "%b %Y"),
     Week             = floor_date(Date, "week"),
     Hour             = as.integer(str_extract(Time, "^\\d+")),
-    # Binary flags
     is_incident      = (Incident == "Yes"),
     is_false_alarm   = (!is_incident & False_Alarm_Reason != "N/A"),
     police_called    = (Police_Called == "Yes"),
     fire_called      = (Fire_Department_Called == "Yes"),
     escalated        = (Escalated == "Yes"),
-    # Ordered factors
     Priority_Level   = factor(Priority_Level,
                               levels = c("Low","Medium","High","Critical"),
                               ordered = TRUE),
@@ -52,7 +34,6 @@ df <- raw %>%
                               levels = c("Junior","Mid","Senior"),
                               ordered = TRUE),
     Shift            = factor(Shift, levels = c("1st","2nd","3rd")),
-    # False alarm reason — replace "N/A" with NA for cleaner analysis
     FA_Reason        = ifelse(False_Alarm_Reason == "N/A" | is.na(False_Alarm_Reason),
                               NA_character_, False_Alarm_Reason)
   )
@@ -67,27 +48,26 @@ cat(sprintf("Incident rate    : %.1f%%\n", mean(df$is_incident)*100))
 cat(sprintf("False alarm rate : %.1f%%\n", mean(df$is_false_alarm, na.rm=TRUE)*100))
 
 
-# ── 2. COLOUR PALETTE & THEME ─────────────────────────────────────────────────
+### Pallete for dashboard ###
 
-# Dark operational theme — fitting for a SOC environment
-COL_BG      <- "#0D1117"
-COL_PANEL   <- "#161B22"
-COL_GRID    <- "#21262D"
-COL_TEXT    <- "#E6EDF3"
-COL_MUTED   <- "#8B949E"
-COL_ACCENT  <- "#F78166"   # red-orange — alert colour
-COL_SAFE    <- "#3FB950"   # green — resolved / safe
-COL_INFO    <- "#58A6FF"   # blue — informational
-COL_WARN    <- "#E3B341"   # amber — warning
+COL_BG="#0D1117"
+COL_PANEL="#161B22"
+COL_GRID="#21262D"
+COL_TEXT="#E6EDF3"
+COL_MUTED="#8B949E"
+COL_ACCENT="#F78166"   
+COL_SAFE="#3FB950"  
+COL_INFO="#58A6FF"   
+COL_WARN="#E3B341" 
 
-priority_cols <- c(
+priority_cols=c(
   "Low"      = "#3FB950",
   "Medium"   = "#E3B341",
   "High"     = "#F0883E",
   "Critical" = "#F85149"
 )
 
-alarm_cols <- c(
+alarm_cols=c(
   "Burglary"     = "#F85149",
   "Fire"         = "#F0883E",
   "Panic Button" = "#E3B341",
@@ -95,15 +75,17 @@ alarm_cols <- c(
   "Technical"    = "#8B949E"
 )
 
-agent_cols <- c(
+agent_cols=c(
   E01="#58A6FF", E02="#79C0FF",
   E03="#3FB950", E04="#56D364", E05="#2EA043", E10="#85E89D",
   E06="#F85149", E07="#FF7B72", E08="#F0883E", E09="#FFA657"
 )
 
-seniority_cols <- c("Senior"="#58A6FF", "Mid"="#3FB950", "Junior"="#F85149")
+seniority_cols=c("Senior"="#58A6FF", "Mid"="#3FB950", "Junior"="#F85149")
 
-soc_theme <- theme_minimal(base_family = "mono") +
+library(ggplot2)
+
+soc_theme= theme_minimal(base_family = "mono") +
   theme(
     plot.background    = element_rect(fill = COL_BG,    colour = NA),
     panel.background   = element_rect(fill = COL_PANEL, colour = NA),
@@ -127,9 +109,9 @@ soc_theme <- theme_minimal(base_family = "mono") +
 theme_set(soc_theme)
 
 
-# ── 3. KPI SUMMARY ────────────────────────────────────────────────────────────
+### KPIs ###
 
-kpi <- list(
+kpi=list(
   total_signals    = nrow(df),
   incident_rate    = mean(df$is_incident),
   false_alarm_rate = mean(df$is_false_alarm, na.rm = TRUE),
@@ -139,7 +121,6 @@ kpi <- list(
   critical_pct     = mean(df$Priority_Level == "Critical")
 )
 
-cat("\n── OPERATIONAL KPIs ─────────────────────────────────────────────────────\n")
 cat(sprintf("Total Signals      : %d\n",   kpi$total_signals))
 cat(sprintf("Incident Rate      : %.1f%%\n", kpi$incident_rate*100))
 cat(sprintf("False Alarm Rate   : %.1f%%\n", kpi$false_alarm_rate*100))
@@ -149,9 +130,9 @@ cat(sprintf("Avg Resolution Time: %.1f min\n", kpi$avg_resolution))
 cat(sprintf("Critical Signals   : %.1f%%\n", kpi$critical_pct*100))
 
 
-# ── 4. AGENT PERFORMANCE TABLE ────────────────────────────────────────────────
+### Agent performance ###
 
-agent_summary <- df %>%
+agent_summary=df %>%
   group_by(Handled_By, Agent_Seniority) %>%
   summarise(
     Total_Signals      = n(),
@@ -166,13 +147,14 @@ agent_summary <- df %>%
   ) %>%
   arrange(Agent_Seniority, Handled_By)
 
+library(knitr)
+
 cat("\n── AGENT PERFORMANCE SUMMARY ────────────────────────────────────────────\n")
 print(kable(agent_summary, format = "simple"))
 
 
-# ── 5. PLOT 1: Alarm Type Distribution with Priority Breakdown ────────────────
-
-p1 <- df %>%
+### Plots ###
+p1=df %>%
   count(Alarm_Type, Priority_Level) %>%
   group_by(Alarm_Type) %>%
   mutate(total = sum(n), pct = n/total) %>%
@@ -190,16 +172,9 @@ p1 <- df %>%
     title    = "Alarm Volume by Type & Priority Level",
     subtitle = "Stacked count — label shows signal count per priority tier",
     x = NULL, y = "Number of Signals", fill = "Priority"
-  )
+  );p1
 
-ggsave("plots/01_alarm_type_priority.png", p1,
-       width=10, height=5.5, dpi=150, bg=COL_BG)
-
-
-# ── 6. PLOT 2: Agent Response Time Comparison ─────────────────────────────────
-
-# Violin + boxplot hybrid for full distribution view
-p2 <- df %>%
+p2=df %>%
   mutate(Handled_By = fct_reorder(Handled_By, Response_Time_Min, median)) %>%
   ggplot(aes(x = Handled_By, y = Response_Time_Min, fill = Agent_Seniority)) +
   geom_violin(alpha = 0.35, colour = NA, trim = FALSE) +
@@ -215,15 +190,11 @@ p2 <- df %>%
     subtitle = "Diamond = mean · Box = IQR · Colour = seniority tier",
     x = NULL, y = "Response Time (minutes)", fill = "Seniority"
   ) +
-  theme(legend.position = "top")
+  theme(legend.position = "top");p2
 
-ggsave("plots/02_agent_response_time.png", p2,
-       width=11, height=6, dpi=150, bg=COL_BG)
+library(scales)
 
-
-# ── 7. PLOT 3: False Alarm Rate by Agent — Ranked ────────────────────────────
-
-p3 <- agent_summary %>%
+p3=agent_summary %>%
   mutate(
     Handled_By = fct_reorder(Handled_By, False_Alarm_Pct),
     flag = ifelse(False_Alarm_Pct > mean(False_Alarm_Pct) + sd(False_Alarm_Pct),
@@ -248,15 +219,9 @@ p3 <- agent_summary %>%
     x = NULL, y = "False Alarm Rate (%)", fill = NULL,
     caption  = "False alarms = non-incident signals with a logged reason"
   ) +
-  theme(legend.position = "top")
+  theme(legend.position = "top");p3
 
-ggsave("plots/03_false_alarm_rate_agent.png", p3,
-       width=10, height=6, dpi=150, bg=COL_BG)
-
-
-# ── 8. PLOT 4: False Alarm Reasons Breakdown ─────────────────────────────────
-
-p4 <- df %>%
+p4=df %>%
   filter(!is.na(FA_Reason)) %>%
   count(FA_Reason, Alarm_Type) %>%
   mutate(FA_Reason = fct_reorder(FA_Reason, n, sum)) %>%
@@ -272,15 +237,9 @@ p4 <- df %>%
     title    = "False Alarm Root Causes",
     subtitle = "Colour = alarm type that triggered the false event",
     x = NULL, y = "Count", fill = "Alarm Type"
-  )
+  );p4
 
-ggsave("plots/04_false_alarm_reasons.png", p4,
-       width=10, height=5.5, dpi=150, bg=COL_BG)
-
-
-# ── 9. PLOT 5: Monthly Signal Volume & Incident Trend ─────────────────────────
-
-monthly_trend <- df %>%
+monthly_trend=df %>%
   group_by(Month, Month_Label) %>%
   summarise(
     Total     = n(),
@@ -292,7 +251,7 @@ monthly_trend <- df %>%
   ) %>%
   arrange(Month)
 
-p5_bar <- monthly_trend %>%
+p5_bar=monthly_trend %>%
   pivot_longer(c(Incidents, Total), names_to = "type", values_to = "n") %>%
   filter(type == "Total") %>%
   ggplot(aes(x = Month_Label, y = n)) +
@@ -307,7 +266,7 @@ p5_bar <- monthly_trend %>%
   labs(x = NULL, y = "Signals", subtitle = "Blue = total · Red = incidents") +
   theme(plot.subtitle = element_text(size=8))
 
-p5_line <- monthly_trend %>%
+p5_line=monthly_trend %>%
   pivot_longer(c(Inc_Rate, FA_Rate), names_to="metric", values_to="rate") %>%
   mutate(metric = recode(metric,
     "Inc_Rate" = "Incident Rate",
@@ -323,7 +282,9 @@ p5_line <- monthly_trend %>%
   labs(x = NULL, y = "Rate", colour = NULL) +
   theme(legend.position = "top", plot.subtitle = element_blank())
 
-p5 <- (p5_bar / p5_line) +
+library(patchwork)
+
+p5=(p5_bar / p5_line) +
   plot_annotation(
     title    = "Monthly Signal Volume & Rate Trends",
     subtitle = "Jan–Jun 2025",
@@ -332,15 +293,9 @@ p5 <- (p5_bar / p5_line) +
       plot.subtitle = element_text(colour=COL_MUTED, size=9),
       plot.background = element_rect(fill=COL_BG, colour=NA)
     )
-  )
+  );p5
 
-ggsave("plots/05_monthly_trends.png", p5,
-       width=11, height=8, dpi=150, bg=COL_BG)
-
-
-# ── 10. PLOT 6: Agent × Shift Performance Heatmap ────────────────────────────
-
-shift_agent <- df %>%
+shift_agent=df %>%
   group_by(Handled_By, Shift) %>%
   summarise(
     avg_response = mean(Response_Time_Min),
@@ -349,7 +304,7 @@ shift_agent <- df %>%
     .groups = "drop"
   )
 
-p6 <- shift_agent %>%
+p6=shift_agent %>%
   ggplot(aes(x = Shift, y = fct_rev(Handled_By), fill = avg_response)) +
   geom_tile(colour = COL_BG, linewidth = 1.5) +
   geom_text(aes(label = sprintf("%.1f\n(n=%d)", avg_response, n)),
@@ -366,15 +321,9 @@ p6 <- shift_agent %>%
     subtitle = "Cell = mean response time (min) · n = signal count",
     x = "Shift", y = NULL
   ) +
-  theme(panel.grid = element_blank())
+  theme(panel.grid = element_blank());p6
 
-ggsave("plots/06_heatmap_agent_shift.png", p6,
-       width=9, height=6, dpi=150, bg=COL_BG)
-
-
-# ── 11. PLOT 7: Incident Rate by Alarm Type × Priority ───────────────────────
-
-p7 <- df %>%
+p7=df %>%
   group_by(Alarm_Type, Priority_Level) %>%
   summarise(
     total     = n(),
@@ -398,17 +347,9 @@ p7 <- df %>%
     x = "Priority Level", y = "Incident Rate", colour = "Alarm Type",
     fill = "Alarm Type"
   ) +
-  theme(legend.position = "right")
+  theme(legend.position = "right");p7
 
-ggsave("plots/07_incident_rate_type_priority.png", p7,
-       width=11, height=6, dpi=150, bg=COL_BG)
-
-
-# ── 12. PLOT 8: E08 Response Time Degradation Over Time ──────────────────────
-
-# E08 was seeded to degrade after April — let's surface it analytically
-
-p8 <- df %>%
+p8=df %>%
   filter(Handled_By %in% c("E08","E06","E07","E09")) %>%   # Junior peers for comparison
   group_by(Handled_By, Month, Month_Label) %>%
   summarise(avg_rt = mean(Response_Time_Min), n = n(), .groups="drop") %>%
@@ -430,15 +371,9 @@ p8 <- df %>%
     title    = "⚠  Agent E08: Response Time Degradation",
     subtitle = "Junior agent cohort (E06–E09) — monthly average response time",
     x = NULL, y = "Avg Response Time (min)", colour = "Agent"
-  )
+  );p8
 
-ggsave("plots/08_e08_degradation.png", p8,
-       width=11, height=6, dpi=150, bg=COL_BG)
-
-
-# ── 13. PLOT 9: False Alarm Rate by Client Type ───────────────────────────────
-
-p9 <- df %>%
+p9=df %>%
   group_by(Client_Type) %>%
   summarise(
     total      = n(),
@@ -466,15 +401,11 @@ p9 <- df %>%
     subtitle = "Grouped comparison across all 6 client categories",
     x = NULL, y = "Rate", fill = NULL
   ) +
-  theme(legend.position = "top")
+  theme(legend.position = "top");p9
 
-ggsave("plots/09_client_type_rates.png", p9,
-       width=11, height=6, dpi=150, bg=COL_BG)
+### Dashboard ###
 
-
-# ── 14. PLOT 10: Composite Dashboard ─────────────────────────────────────────
-
-dashboard <- (p1 | p3) / (p2) / (p7 | p9) +
+dashboard=(p1 | p3) / (p2) / (p7 | p9) +
   plot_annotation(
     title    = "SOC ALARM INTELLIGENCE DASHBOARD",
     subtitle = "Security Operations Center · Jan–Jun 2025 · 1,200 Signals · 10 Agents",
@@ -485,57 +416,50 @@ dashboard <- (p1 | p3) / (p2) / (p7 | p9) +
       plot.subtitle   = element_text(colour=COL_MUTED, size=10, family="mono",
                                      margin=margin(b=12))
     )
-  )
-
-ggsave("plots/00_soc_dashboard.png", dashboard,
-       width=18, height=20, dpi=150, bg=COL_BG)
-cat("\n✓ Composite dashboard saved → plots/00_soc_dashboard.png\n")
+  );dashboard
 
 
-# ── 15. STATISTICAL ANALYSIS ──────────────────────────────────────────────────
+### Analysis ###
 
-cat("\n══════════════════════════════════════════════════════════════════\n")
-cat("  STATISTICAL FINDINGS\n")
-cat("══════════════════════════════════════════════════════════════════\n\n")
-
-# 15a. ANOVA: Response time by Agent
+# ANOVA: Response time by Agent
 cat("── A. One-Way ANOVA: Response Time ~ Agent ─────────────────────\n")
 anova_agent <- aov(Response_Time_Min ~ Handled_By, data = df)
 print(summary(anova_agent))
 
-# 15b. ANOVA: Response time by Seniority
+# ANOVA: Response time by Seniority
 cat("\n── B. One-Way ANOVA: Response Time ~ Seniority ─────────────────\n")
 anova_sen <- aov(Response_Time_Min ~ Agent_Seniority, data = df)
 print(summary(anova_sen))
 
-# 15c. Kruskal-Wallis (non-parametric alternative): Seniority vs Response
+# Kruskal-Wallis: Seniority vs Response
 cat("\n── C. Kruskal-Wallis: Response Time ~ Seniority (non-parametric) \n")
 kw <- kruskal.test(Response_Time_Min ~ Agent_Seniority, data=df)
 print(kw)
 
-# 15d. Chi-square: Is false alarm rate independent of Shift?
+# Chi-square: Is false alarm rate independent of Shift?
 cat("\n── D. Chi-Square: False Alarm vs Shift ─────────────────────────\n")
 fa_shift_tbl <- table(df$is_false_alarm, df$Shift)
 print(chisq.test(fa_shift_tbl))
 
-# 15e. Chi-square: Incident rate vs Client Type
+#Chi-square: Incident rate vs Client Type
 cat("\n── E. Chi-Square: Incident Rate vs Client Type ──────────────────\n")
 inc_ct_tbl <- table(df$is_incident, df$Client_Type)
 print(chisq.test(inc_ct_tbl))
 
-# 15f. Spearman: Response time vs Priority
+# Spearman: Response time vs Priority
 cat("\n── F. Spearman Correlation: Response Time vs Priority (numeric) ─\n")
 df_cor <- df %>% mutate(priority_num = as.integer(Priority_Level))
 cor_res <- cor.test(df_cor$Response_Time_Min, df_cor$priority_num,
                     method = "spearman")
 cat(sprintf("ρ = %.4f,  p-value = %.6f\n", cor_res$estimate, cor_res$p.value))
 
-# 15g. Logistic regression: Predictors of an incident
+# Logistic regression: Predictors of an incident
 cat("\n── G. Logistic Regression: Incident ~ Priority + Alarm + Seniority\n")
-logit <- glm(is_incident ~ Priority_Level + Alarm_Type + Agent_Seniority,
+logit=glm(is_incident ~ Priority_Level + Alarm_Type + Agent_Seniority,
              data   = df,
              family = binomial(link = "logit"))
-tidy_logit <- tidy(logit, exponentiate = TRUE, conf.int = TRUE) %>%
+library(broom)
+tidy_logit=tidy(logit, exponentiate = TRUE, conf.int = TRUE) %>%
   mutate(across(where(is.numeric), ~round(.x, 4))) %>%
   rename(OddsRatio = estimate)
 print(kable(tidy_logit, format = "simple"))
@@ -545,55 +469,11 @@ cat(sprintf("Null deviance   : %.2f (df=%d)\n",
 cat(sprintf("Residual deviance: %.2f (df=%d)\n",
             logit$deviance, logit$df.residual))
 
-# Pseudo R² (McFadden)
-pseudo_r2 <- 1 - (logit$deviance / logit$null.deviance)
-cat(sprintf("McFadden Pseudo R²: %.4f\n", pseudo_r2))
-
-# 15h. E08 specific t-test: before vs after April
+# E08 specific t-test: before vs after April
 cat("\n── H. T-Test: E08 Response Time Before vs After April 2025 ─────\n")
-e08 <- df %>% filter(Handled_By == "E08") %>%
+e08=df %>% filter(Handled_By == "E08") %>%
   mutate(period = ifelse(Date < as.Date("2025-04-01"), "Before Apr", "From Apr"))
-t_e08 <- t.test(Response_Time_Min ~ period, data = e08, var.equal = FALSE)
+t_e08=t.test(Response_Time_Min ~ period, data = e08, var.equal = FALSE)
 print(t_e08)
 
 
-# ── 16. AGENT ISSUE FLAGS ─────────────────────────────────────────────────────
-
-cat("\n══════════════════════════════════════════════════════════════════\n")
-cat("  AUTOMATED AGENT ISSUE FLAGS\n")
-cat("══════════════════════════════════════════════════════════════════\n\n")
-
-fleet_avg_rt <- mean(df$Response_Time_Min)
-fleet_sd_rt  <- sd(df$Response_Time_Min)
-fleet_fa     <- mean(df$is_false_alarm, na.rm=TRUE)
-fleet_sd_fa  <- sd(df$is_false_alarm, na.rm=TRUE)
-
-flags <- agent_summary %>%
-  mutate(
-    flag_slow_response = Avg_Response_Min > (fleet_avg_rt + fleet_sd_rt),
-    flag_high_fa       = False_Alarm_Pct/100 > (fleet_fa + fleet_sd_fa),
-    flag_high_incidents = Incident_Rate_Pct > mean(agent_summary$Incident_Rate_Pct) +
-                          sd(agent_summary$Incident_Rate_Pct)
-  ) %>%
-  filter(flag_slow_response | flag_high_fa | flag_high_incidents) %>%
-  select(Handled_By, Agent_Seniority,
-         Avg_Response_Min, False_Alarm_Pct, Incident_Rate_Pct,
-         flag_slow_response, flag_high_fa, flag_high_incidents)
-
-if (nrow(flags) > 0) {
-  cat("⚠  FLAGGED AGENTS:\n\n")
-  print(kable(flags, format="simple"))
-} else {
-  cat("✓ No agents flagged outside thresholds.\n")
-}
-
-
-# ── 17. EXPORT SUMMARY TABLES ─────────────────────────────────────────────────
-
-write.csv(agent_summary,   "agent_performance_summary.csv",  row.names=FALSE)
-write.csv(monthly_trend,   "monthly_summary.csv",            row.names=FALSE)
-write.csv(flags,           "flagged_agents.csv",             row.names=FALSE)
-
-cat("\n✓ Summary CSVs exported.\n")
-cat("✓ All plots saved to ./plots/\n")
-cat("\n=== Analysis complete. ===\n")
