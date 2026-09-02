@@ -1,12 +1,13 @@
 # Security Operations Center — Alarm Signal Analysis
 
-I spent several years working as a manager and data analyst inside a Security Operations Center, and this project is built around the kind of analysis I actually did on the job: figuring out which agents were struggling, why false alarms kept happening, and which signals genuinely deserved to be escalated.
+I spent a couple years working as a manager inside a Security Operations Center, and this project is built around the kind of analysis I actually did on the job: figuring out which agents were struggling, why false alarms kept happening, and which signals genuinely deserved to be escalated.
 
-I can't share the real operational data, so this dataset is synthetic — 1,200 alarm signals, six months (Jan–Jun 2025), 10 agents, 5 alarm types — but I built it to reflect the patterns I saw in practice, including planting a realistic problem (an agent whose response times quietly get worse partway through the year) to demonstrate how I'd actually go about catching that kind of thing rather than just eyeballing a chart.
+I can't share the real operational data, so this dataset is synthetic with 1,200 alarm signals, six months (Jan–Jun 2025), 10 agents and 5 alarm types, but I built it to reflect the patterns I saw in practice, including planting a realistic problem (an agent whose response times quietly get worse partway through the year) to demonstrate how I'd actually go about catching that kind of thing rather than just eyeballing a chart.
 
 **Note:** this is a synthetic dataset generated for portfolio purposes. No real client, agent, or operational data is used anywhere in this project.
 
-![SOC Alarm Intelligence Dashboard](plots/00_soc_dashboard.png)
+<img width="1920" height="947" alt="image" src="https://github.com/user-attachments/assets/6abe1c63-c1f2-4a8b-8e02-6b675884e2ff" />
+
 
 ---
 
@@ -14,7 +15,7 @@ I can't share the real operational data, so this dataset is synthetic — 1,200 
 
 Security operations centers deal with a constant stream of alarm signals, and most of them turn out to be nothing — an animal walking past a sensor, a power blip, someone forgetting their door code. The real job is sorting the noise from the signal fast enough that when something genuine happens, it gets escalated immediately. That was my day-to-day for a while, both running a team of agents and digging into the data behind their performance.
 
-This project reproduces the questions I'd actually ask as a manager running that kind of operation:
+This project reproduces the questions I actually asked as a manager running that kind of operation:
 
 - Are some agents genuinely slower than others, or is it just noise?
 - Is any single agent's false alarm rate high enough to be a real concern?
@@ -23,7 +24,7 @@ This project reproduces the questions I'd actually ask as a manager running that
 - Is Agent E08 getting worse over time, or does it just feel that way?
 - Are false alarms tied to when a signal comes in, or is it something else entirely?
 
-Everything in this repo is me working through those questions with actual statistical tests rather than guessing from a chart — the same way I'd approach it if this were a live dataset from a real center.
+Everything in this repo is me working through those questions with actual statistical tests rather than guessing from a chart.
 
 ---
 
@@ -107,7 +108,8 @@ source("soc_analysis.R")
 
 **Response time by seniority (ANOVA + Kruskal-Wallis)** — I ran seniority two ways because response times are right-skewed (a handful of juniors have very long outlier times that would skew a plain ANOVA). Both tests agree: seniority matters a lot (Kruskal-Wallis χ² = 858.2, p < 2.2e-16). Senior agents respond roughly 4x faster than juniors on average.
 
-![Average Response Time by Agent and Shift](plots/06_heatmap_agent_shift.png)
+<img width="1920" height="947" alt="image" src="https://github.com/user-attachments/assets/a75a2322-10a9-4cc8-94ee-8e58c498404b" />
+
 
 **False alarms vs shift (Chi-square)** — I expected the overnight shift to have a different false alarm profile, maybe more spooked-by-shadows animal triggers. It didn't (χ² = 0.19, p = 0.91). False alarm rate looks completely independent of shift, which points to the cause being on the client side, not the SOC's operations.
 
@@ -119,7 +121,8 @@ source("soc_analysis.R")
 
 **Welch t-test — Agent E08 before vs after April** — this was the one I built the dataset around. I compared E08's Jan–Mar response times against Apr–Jun using Welch's version (unequal variance, since the pre-April sample is smaller). The difference is enormous and unambiguous (t = -11.5, p < 2.2e-16) — something changed for this agent partway through the year.
 
-![Agent E08 Response Time Degradation](plots/08_e08_degradation.png)
+<img width="1920" height="947" alt="image" src="https://github.com/user-attachments/assets/3f93ecc7-109d-46aa-ae17-e150050b6526" />
+
 
 ---
 
@@ -141,21 +144,25 @@ Flags trigger automatically when an agent's response time, false alarm rate, or 
 - Tamper and Technical alarms are almost never real incidents (close to 0%)
 - Warehouses and factories have fewer false alarms overall, but the incidents they do have tend to be more severe
 
-![False Alarm Root Causes](plots/04_false_alarm_reasons.png)
+<img width="1920" height="947" alt="image" src="https://github.com/user-attachments/assets/ae5a5e20-a2a0-440c-b7ff-606b99aeb034" />
+
 
 **Other things worth knowing:**
 - Critical-priority Panic Button alarms turn into real incidents over 75% of the time — an automatic escalation policy for these specifically seems justified
 - The 1st shift (mornings) sees the most volume, but overnight (3rd shift) gets the most Critical-priority signals
 - False alarm rate doesn't move with shift — again, this looks like a client-side pattern, not an operations one
 
-![Incident Confirmation Rate by Alarm Type and Priority](plots/07_incident_rate_type_priority.png)
+<img width="1920" height="947" alt="image" src="https://github.com/user-attachments/assets/ef66f3b3-66ef-4f06-a62d-91e1cdf08048" />
 
-![False Alarm vs Incident Rate by Client Type](plots/09_client_type_rates.png)
+
+<img width="1920" height="947" alt="image" src="https://github.com/user-attachments/assets/6e2ebaea-8337-40d0-acbf-d01f1a03df48" />
+
 
 Volume held fairly steady month over month, with false alarm and incident rates both staying flat across the six-month window — a sign the underlying operational patterns are stable rather than drifting, which makes the E08 anomaly stand out even more.
 
-![Monthly Signal Volume and Rate Trends](plots/05_monthly_trends.png)
+<img width="1920" height="947" alt="image" src="https://github.com/user-attachments/assets/d9ebb048-81a5-404b-a628-e9ff8e5a9148" />
+
 
 ---
 
-This is the same instinct I relied on when I was managing a SOC team day-to-day: don't act on a pattern until you've actually tested whether it's real. This project just puts that process on display with a dataset I'm free to share.
+
