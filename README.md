@@ -139,7 +139,7 @@ source("soc_analysis.R")
 Flags trigger automatically when an agent's response time, false alarm rate, or incident rate sits more than 1 standard deviation above the fleet average.
 
 **False alarms:**
-- About 65% of all signals are false alarms, which lines up with what I've read about real SOC operations
+- About 65% of all signals are false alarms
 - Power outages, maintenance, and general environmental noise are the biggest root causes
 - Tamper and Technical alarms are almost never real incidents (close to 0%)
 - Warehouses and factories have fewer false alarms overall, but the incidents they do have tend to be more severe
